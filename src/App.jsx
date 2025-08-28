@@ -1,21 +1,13 @@
 // src/App.jsx
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  Search,
-  MapPin,
-  Route,
-  Languages,
-  LocateFixed,
-  ExternalLink,
-} from "lucide-react";
+import { Search, MapPin, Route, Languages, LocateFixed, ExternalLink } from "lucide-react";
 
-// Fix Leaflet's default marker path issues in many bundlers
+// Leaflet 기본 마커 아이콘 경로 문제 해결
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
@@ -24,14 +16,12 @@ L.Icon.Default.mergeOptions({
 const UI = {
   ko: {
     title: "케데헌 따라 서울 여행 맵",
-    subtitle:
-      "<케이팝 데몬 헌터스>에 나온 서울 배경지를 따라가며 여행하는 웹앱",
+    subtitle: "<케이팝 데몬 헌터스>에 나온 서울 배경지를 따라가며 여행하는 웹앱",
     search: "장소 검색",
     category: "카테고리",
     all: "전체",
     buildRoute: "지도 앱으로 경로 열기",
-    followRouteHint:
-      "필터/정렬된 순서대로 최대 10곳까지 길찾기를 엽니다. (Google Maps)",
+    followRouteHint: "필터/정렬된 순서대로 최대 10곳까지 길찾기를 엽니다. (Google Maps)",
     details: "자세히",
     directions: "길찾기",
     nearMe: "내 위치로",
@@ -41,14 +31,12 @@ const UI = {
   },
   en: {
     title: "Seoul by Kedeheon — Bilingual Map",
-    subtitle:
-      "A travel map that follows Seoul locations featured in ‘K-Pop Demon Hunters’.",
+    subtitle: "A travel map that follows Seoul locations featured in ‘K-Pop Demon Hunters’.",
     search: "Search places",
     category: "Category",
     all: "All",
     buildRoute: "Open route in map app",
-    followRouteHint:
-      "Opens Google Maps directions for up to 10 places in the current order.",
+    followRouteHint: "Opens Google Maps directions for up to 10 places in the current order.",
     details: "Details",
     directions: "Directions",
     nearMe: "Center on me",
@@ -180,10 +168,7 @@ const PLACES = [
   },
   {
     id: "jayang",
-    name: {
-      ko: "자양역(구 뚝섬유원지)",
-      en: "Jayang Station (ex-Ttukseom Resort)",
-    },
+    name: { ko: "자양역(구 뚝섬유원지)", en: "Jayang Station (ex-Ttukseom Resort)" },
     category: "subway",
     lat: 37.5352,
     lng: 127.0847,
@@ -209,6 +194,7 @@ const CATEGORIES = [
   { key: "subway", label: { ko: "지하철", en: "Subway" } },
 ];
 
+// 사용자 위치
 function useUserLocation() {
   const [pos, setPos] = useState(null);
   const [error, setError] = useState(null);
@@ -218,19 +204,20 @@ function useUserLocation() {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (p) => setPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      (e) => setError(e.message),
+      p => setPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      e => setError(e.message),
       { enableHighAccuracy: true, timeout: 8000 }
     );
   };
   return { pos, error, request };
 }
 
-function FlyTo({ center }) {
+// 지도 이동 컴포넌트(줌 포함)
+function FlyTo({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
-    if (center) map.flyTo(center, 13, { duration: 0.8 });
-  }, [center, map]);
+    if (center) map.flyTo(center, zoom ?? map.getZoom(), { duration: 0.3 });
+  }, [center, zoom, map]);
   return null;
 }
 
@@ -241,14 +228,16 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("all");
   const [selected, setSelected] = useState(null);
+
   const [center, setCenter] = useState({ lat: 37.5665, lng: 126.978 }); // Seoul City Hall
+  const [zoom, setZoom] = useState(12); // 초기 줌
 
   const { pos, request } = useUserLocation();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return PLACES.filter(
-      (p) =>
+      p =>
         (cat === "all" || p.category === cat) &&
         (!q ||
           p.name.ko.toLowerCase().includes(q) ||
@@ -261,13 +250,11 @@ export default function App() {
   const openDirections = () => {
     const pts = filtered.slice(0, 10);
     if (pts.length === 0) return;
-    const origin = pos
-      ? `${pos.lat},${pos.lng}`
-      : `${pts[0].lat},${pts[0].lng}`;
+    const origin = pos ? `${pos.lat},${pos.lng}` : `${pts[0].lat},${pts[0].lng}`;
     const destination = `${pts[pts.length - 1].lat},${pts[pts.length - 1].lng}`;
     const waypoints = pts
       .slice(1, -1)
-      .map((p) => `${p.lat},${p.lng}`)
+      .map(p => `${p.lat},${p.lng}`)
       .join("|");
     const url =
       `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}` +
@@ -277,7 +264,8 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col">
+    // 모바일 높이 보정: index.css에 --app-dvh(100dvh) 정의 필요
+    <div className="w-full min-h-[var(--app-dvh)] flex flex-col">
       {/* Header */}
       <header className="px-4 py-3 border-b bg-white/80 backdrop-blur sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
@@ -288,7 +276,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setLang((prev) => (prev === "ko" ? "en" : "ko"))}
+              onClick={() => setLang(prev => (prev === "ko" ? "en" : "ko"))}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border shadow-sm text-sm hover:bg-gray-50"
               title={t.langLabel}
             >
@@ -304,7 +292,10 @@ export default function App() {
             <button
               onClick={() => {
                 request();
-                if (pos) setCenter(pos);
+                if (pos) {
+                  setCenter(pos);
+                  setZoom(16);
+                }
               }}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border shadow-sm text-sm hover:bg-gray-50"
             >
@@ -326,15 +317,15 @@ export default function App() {
                   className="w-full pl-9 pr-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring"
                   placeholder={t.search}
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={e => setQuery(e.target.value)}
                 />
               </div>
               <select
                 className="px-3 py-2 rounded-xl border text-sm"
                 value={cat}
-                onChange={(e) => setCat(e.target.value)}
+                onChange={e => setCat(e.target.value)}
               >
-                {CATEGORIES.map((c) => (
+                {CATEGORIES.map(c => (
                   <option key={c.key} value={c.key}>
                     {c.label[lang]}
                   </option>
@@ -344,15 +335,16 @@ export default function App() {
           </div>
 
           <ul className="divide-y">
-            {filtered.length === 0 && (
-              <li className="p-4 text-sm text-gray-500">{t.empty}</li>
-            )}
-            {filtered.map((p) => (
+            {filtered.length === 0 && <li className="p-4 text-sm text-gray-500">{t.empty}</li>}
+            {filtered.map(p => (
               <li key={p.id} className="p-3 hover:bg-gray-50">
                 <div className="flex items-start gap-3">
                   <button
                     className="shrink-0 w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center border"
-                    onClick={() => setCenter({ lat: p.lat, lng: p.lng })}
+                    onClick={() => {
+                      setCenter({ lat: p.lat, lng: p.lng });
+                      setZoom(16);
+                    }}
                     title="Center on map"
                   >
                     <MapPin className="w-4 h-4" />
@@ -364,22 +356,24 @@ export default function App() {
                         {lang === "ko" ? UI.ko.sourceTag : UI.en.sourceTag}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 mt-0.5">
-                      {p.summary[lang]}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">{p.address}</p>
+                    <p className="text-xs text-gray-600 mt-0.5 break-words">{p.summary[lang]}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 break-words">{p.address}</p>
                     <div className="flex gap-2 mt-2">
                       <a
                         className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border hover:bg-gray-50"
                         href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`}
-                        target="_blank"
+                        target="__blank"
                         rel="noreferrer"
                       >
                         <ExternalLink className="w-3 h-3" /> {t.directions}
                       </a>
                       <button
                         className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border hover:bg-gray-50"
-                        onClick={() => setSelected(p)}
+                        onClick={() => {
+                          setSelected(p);
+                          setCenter({ lat: p.lat, lng: p.lng });
+                          setZoom(16);
+                        }}
                       >
                         {t.details}
                       </button>
@@ -393,29 +387,30 @@ export default function App() {
 
         {/* Map */}
         <div className="relative">
-          <MapContainer
-            center={[center.lat, center.lng]}
-            zoom={12}
-            className="w-full h-full z-0"
-          >
+          <MapContainer center={[center.lat, center.lng]} zoom={zoom} className="w-full h-full z-0">
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <FlyTo center={center} />
 
-            {filtered.map((p) => (
+            <FlyTo center={center} zoom={zoom} />
+
+            {filtered.map(p => (
               <Marker
                 key={p.id}
                 position={[p.lat, p.lng]}
-                eventHandlers={{ click: () => setSelected(p) }}
+                eventHandlers={{
+                  click: () => {
+                    setSelected(p);
+                    setCenter({ lat: p.lat, lng: p.lng });
+                    setZoom(16);
+                  },
+                }}
               >
                 <Popup>
                   <div className="min-w-[180px]">
                     <div className="font-medium">{p.name[lang]}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {p.summary[lang]}
-                    </div>
+                    <div className="text-xs text-gray-600 mt-1 break-words">{p.summary[lang]}</div>
                     <a
                       className="text-xs inline-flex items-center gap-1 mt-2 underline"
                       href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`}
@@ -430,28 +425,22 @@ export default function App() {
             ))}
           </MapContainer>
 
-          {/* Details drawer */}
+          {/* Details drawer: 모바일에서는 숨김, 데스크톱(md↑)에서만 표시 */}
           {selected && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] md:w-[480px] bg-white rounded-2xl shadow-xl border p-4 z-10">
+            <div className="hidden md:block absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] md:w-[480px] bg-white rounded-2xl shadow-xl border p-4 z-10">
               <div className="flex items-start gap-3">
                 <div className="shrink-0 w-9 h-9 rounded-xl bg-gray-100 border flex items-center justify-center">
                   <MapPin className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-base">
-                      {selected.name[lang]}
-                    </h3>
+                    <h3 className="font-semibold text-base">{selected.name[lang]}</h3>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {lang === "ko" ? UI.ko.sourceTag : UI.en.sourceTag}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700 mt-1">
-                    {selected.summary[lang]}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {selected.address}
-                  </p>
+                  <p className="text-sm text-gray-700 mt-1 break-words">{selected.summary[lang]}</p>
+                  <p className="text-xs text-gray-500 mt-1 break-words">{selected.address}</p>
                   <div className="flex gap-2 mt-3">
                     <a
                       className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border hover:bg-gray-50"
@@ -463,18 +452,19 @@ export default function App() {
                     </a>
                     <button
                       className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg border hover:bg-gray-50"
-                      onClick={() =>
-                        setCenter({ lat: selected.lat, lng: selected.lng })
-                      }
+                      onClick={() => {
+                        setCenter({ lat: selected.lat, lng: selected.lng });
+                        setZoom(16);
+                      }}
                     >
-                      <Route className="w-3 h-3" />{" "}
-                      {lang === "ko" ? "지도 중심" : "Center map"}
+                      <Route className="w-3 h-3" /> {lang === "ko" ? "지도 중심" : "Center map"}
                     </button>
                   </div>
                 </div>
                 <button
                   onClick={() => setSelected(null)}
                   className="text-xs px-2 py-1 rounded-lg border hover:bg-gray-50"
+                  aria-label="close details"
                 >
                   ✕
                 </button>
