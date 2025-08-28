@@ -1,4 +1,4 @@
 // vite.config.js
 export default {
-  base: "./",   // <- /KEDEHUMMap/ 대신 이걸로
+  base: "./",   // GitHub Pages 하위 경로에서도 안전하게 상대경로로 처리
 };
